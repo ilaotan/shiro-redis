@@ -11,8 +11,6 @@ import java.util.*;
 public class RedisClusterManager implements IRedisManager {
 
     private static final int DEFAULT_COUNT = 100;
-    private static final int DEFAULT_MIN_EVICTABLE_IDLE_TIME = 60000;
-    private static final int DEFAULT_TIME_BETWEEN_EVICTION_RUNS = 30000;
     private static final int DEFAULT_MAX_ATTEMPTS = 3;
     private static final String DEFAULT_HOST = "127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002";
     private String host = DEFAULT_HOST;
