@@ -17,7 +17,7 @@ public class RedisManager extends WorkAloneRedisManager implements IRedisManager
 
 	private int database = Protocol.DEFAULT_DATABASE;
 
-	private volatile JedisPool jedisPool;
+	private JedisPool jedisPool;
 
 	private void init() {
 		if (jedisPool == null) {

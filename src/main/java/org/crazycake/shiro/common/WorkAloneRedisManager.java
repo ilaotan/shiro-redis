@@ -3,8 +3,8 @@ package org.crazycake.shiro.common;
 import org.crazycake.shiro.IRedisManager;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPoolConfig;
-import redis.clients.jedis.params.ScanParams;
-import redis.clients.jedis.resps.ScanResult;
+import redis.clients.jedis.ScanParams;
+import redis.clients.jedis.ScanResult;
 
 import java.util.HashSet;
 import java.util.List;
@@ -117,7 +117,9 @@ public abstract class WorkAloneRedisManager implements IRedisManager {
             do {
                 scanResult = jedis.scan(cursor, params);
                 List<byte[]> results = scanResult.getResult();
-                dbSize += results.size();
+                for (byte[] result : results) {
+                    dbSize++;
+                }
                 cursor = scanResult.getCursorAsBytes();
             } while (scanResult.getCursor().compareTo(ScanParams.SCAN_POINTER_START) > 0);
         } finally {
@@ -131,7 +133,6 @@ public abstract class WorkAloneRedisManager implements IRedisManager {
      * @param pattern key pattern
      * @return key set
      */
-    @Override
     public Set<byte[]> keys(byte[] pattern) {
         Set<byte[]> keys = new HashSet<byte[]>();
         Jedis jedis = getJedis();

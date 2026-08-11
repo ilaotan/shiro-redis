@@ -1,12 +1,11 @@
 package org.crazycake.shiro;
 
-
 import redis.clients.jedis.*;
-import redis.clients.jedis.params.ScanParams;
-import redis.clients.jedis.resps.ScanResult;
 
-import java.time.Duration;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 
 public class RedisClusterManager implements IRedisManager {
 
@@ -32,7 +31,7 @@ public class RedisClusterManager implements IRedisManager {
     /**
      * JedisPoolConfig used to initialize JedisPool.
      */
-    private ConnectionPoolConfig connectionPoolConfig = new ConnectionPoolConfig();
+    private JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
 
     private volatile JedisCluster jedisCluster = null;
 
@@ -40,7 +39,7 @@ public class RedisClusterManager implements IRedisManager {
         if (jedisCluster == null) {
             synchronized (RedisClusterManager.class) {
                 if (jedisCluster == null) {
-                    jedisCluster = new JedisCluster(getHostAndPortSet(), timeout, soTimeout, maxAttempts, password, getConnectionPoolConfig());
+                    jedisCluster = new JedisCluster(getHostAndPortSet(), timeout, soTimeout, maxAttempts, password, getJedisPoolConfig());
                 }
             }
         }
@@ -94,12 +93,12 @@ public class RedisClusterManager implements IRedisManager {
 
     @Override
     public Long dbSize(byte[] pattern) {
-        long dbSize = 0L;
-        Map<String, ConnectionPool> clusterNodes = getJedisCluster().getClusterNodes();
-        Iterator<Map.Entry<String, ConnectionPool>> nodeIt = clusterNodes.entrySet().iterator();
+        Long dbSize = 0L;
+        Map<String, JedisPool> clusterNodes = getJedisCluster().getClusterNodes();
+        Iterator<Map.Entry<String, JedisPool>> nodeIt = clusterNodes.entrySet().iterator();
         while (nodeIt.hasNext()) {
-            Map.Entry<String, ConnectionPool> node = nodeIt.next();
-            long nodeDbSize = getDbSizeFromClusterNode(new Jedis(node.getValue().getResource()), pattern);
+            Map.Entry<String, JedisPool> node = nodeIt.next();
+            long nodeDbSize = getDbSizeFromClusterNode(node.getValue(), pattern);
             if (nodeDbSize == 0L) {
                 continue;
             }
@@ -111,12 +110,12 @@ public class RedisClusterManager implements IRedisManager {
     @Override
     public Set<byte[]> keys(byte[] pattern) {
         Set<byte[]> keys = new HashSet<byte[]>();
-        Map<String, ConnectionPool> clusterNodes = getJedisCluster().getClusterNodes();
-        Iterator<Map.Entry<String, ConnectionPool>> nodeIt = clusterNodes.entrySet().iterator();
+        Map<String, JedisPool> clusterNodes = getJedisCluster().getClusterNodes();
+        Iterator<Map.Entry<String, JedisPool>> nodeIt = clusterNodes.entrySet().iterator();
         while (nodeIt.hasNext()) {
-            Map.Entry<String, ConnectionPool> node = nodeIt.next();
-            Set<byte[]> nodeKeys = getKeysFromClusterNode(new Jedis(node.getValue().getResource()), pattern);
-            if (nodeKeys.size() == 0) {
+            Map.Entry<String, JedisPool> node = nodeIt.next();
+            Set<byte[]> nodeKeys = getKeysFromClusterNode(node.getValue(), pattern);
+            if (nodeKeys == null || nodeKeys.size() == 0) {
                 continue;
             }
             keys.addAll(nodeKeys);
@@ -125,8 +124,9 @@ public class RedisClusterManager implements IRedisManager {
         return keys;
     }
 
-    private Set<byte[]> getKeysFromClusterNode(Jedis jedis, byte[] pattern) {
+    private Set<byte[]> getKeysFromClusterNode(JedisPool jedisPool, byte[] pattern) {
         Set<byte[]> keys = new HashSet<byte[]>();
+        Jedis jedis = jedisPool.getResource();
 
         try {
             ScanParams params = new ScanParams();
@@ -145,8 +145,9 @@ public class RedisClusterManager implements IRedisManager {
         return keys;
     }
 
-    private long getDbSizeFromClusterNode(Jedis jedis, byte[] pattern) {
+    private long getDbSizeFromClusterNode(JedisPool jedisPool, byte[] pattern) {
         long dbSize = 0L;
+        Jedis jedis = jedisPool.getResource();
 
         try {
             ScanParams params = new ScanParams();
@@ -225,11 +226,11 @@ public class RedisClusterManager implements IRedisManager {
         this.jedisCluster = jedisCluster;
     }
 
-    public ConnectionPoolConfig getConnectionPoolConfig() {
-        return connectionPoolConfig;
+    public JedisPoolConfig getJedisPoolConfig() {
+        return jedisPoolConfig;
     }
 
-    public void setConnectionPoolConfig(ConnectionPoolConfig connectionPoolConfig) {
-        this.connectionPoolConfig = connectionPoolConfig;
+    public void setJedisPoolConfig(JedisPoolConfig jedisPoolConfig) {
+        this.jedisPoolConfig = jedisPoolConfig;
     }
 }
